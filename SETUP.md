@@ -1,129 +1,154 @@
-# Occra: hướng dẫn setup và deploy
+# Occra: setup and deploy guide
 
-Occra gồm hai phần:
+Occra has two parts:
 
-- **site**: giao diện web (HTML + CSS + JS), host trên Cloudflare Pages.
-- **api**: một Cloudflare Worker nhỏ, giữ YouTube API key ở server và cache kết quả tìm kiếm, để người dùng không phải tự tạo key.
+- **site**: the web app (HTML, CSS and JS), hosted on Cloudflare Pages.
+- **api**: a small Cloudflare Worker that keeps the YouTube API key on the server and caches search results, so users don't need their own key.
 
-## Chuẩn bị
+## Prerequisites
 
-- Node.js (bản LTS)
-- Tài khoản Cloudflare (miễn phí)
-- Tài khoản Google (để lấy YouTube API key)
+- Node.js (LTS)
+- A Cloudflare account (free)
+- A Google account (to get the YouTube API key)
 
-## 1. Sắp xếp folder
+## 1. Folder layout
 
 ```
 occra/
 ├── site/
-│   ├── index.html   ← đổi tên từ occra.html
-│   └── style.css
+│   ├── index.html
+│   ├── style.css
+│   ├── config.js    ← the only file you edit (Worker URL, Google Client ID)
+│   └── app.js       ← all of the app logic
 └── api/
     ├── worker.js
     └── wrangler.toml
 ```
 
-Tách riêng để khi đưa site lên mạng thì `worker.js` và `wrangler.toml` không bị upload theo.
+Keep them separate so `worker.js` and `wrangler.toml` are not uploaded along with the site.
 
-## 2. Lấy YouTube API key
+When you receive an update, you only need to replace `index.html`, `style.css` and `app.js`. Keep your own `config.js` so you don't have to paste your settings again.
 
-1. Vào https://console.cloud.google.com và tạo project mới.
-2. Vào **APIs & Services → Library**, tìm "YouTube Data API v3" rồi bấm **Enable**.
-3. Vào **Credentials → Create credentials → API key**.
-4. Bấm vào key vừa tạo, ở mục **API restrictions** chọn chỉ cho phép YouTube Data API v3.
+## 2. Get a YouTube API key
 
-## 3. Deploy Worker (phần API)
+1. Go to https://console.cloud.google.com and create a new project.
+2. Open **APIs & Services → Library**, search for "YouTube Data API v3" and click **Enable**.
+3. Open **Credentials → Create credentials → API key**.
+4. Click the new key and, under **API restrictions**, allow only the YouTube Data API v3.
+
+## 3. Deploy the Worker (the API)
 
 ```bash
 cd occra/api
 npm i -g wrangler
 wrangler login
-wrangler secret put YT_KEY      # dán API key vào khi được hỏi
+wrangler secret put YT_KEY      # paste the API key when prompted
 wrangler deploy
 ```
 
-- Nếu được hỏi tạo Worker mới tên `occra-api` thì chọn Yes. Lần đầu có thể phải đặt một subdomain `workers.dev`.
-- Cuối cùng nó in ra URL dạng `https://occra-api.<tên-bạn>.workers.dev`.
-- Kiểm tra: mở `<URL>/search?q=lofi` trên trình duyệt. Thấy JSON là Worker chạy được.
+- If asked to create a new Worker named `occra-api`, choose Yes. The first time, you may also be asked to register a `workers.dev` subdomain.
+- At the end it prints a URL like `https://occra-api.<your-name>.workers.dev`.
+- To check it, open `<URL>/search?q=lofi` in a browser. If you see JSON, the Worker is working.
+- A brand-new `workers.dev` subdomain can take a few minutes before its SSL certificate is ready. If you get an SSL error (for example `ERR_SSL_VERSION_OR_CIPHER_MISMATCH`), wait 5 to 15 minutes and try again.
 
-## 4. Gắn URL Worker vào web
+## 4. Point the site at your Worker
 
-Mở `site/index.html`, tìm dòng:
+Open `site/config.js` and find this line:
 
 ```js
 var API='https://YOUR-WORKER.workers.dev';
 ```
 
-và thay bằng URL Worker của bạn.
+Replace the URL with your Worker's URL.
 
-## 5. Test trên máy
+## 5. Test locally
 
 ```bash
 cd occra/site
 python3 -m http.server 8000
 ```
 
-Mở http://localhost:8000 rồi thử: tìm một bài, dán link video, nhập một playlist.
+Open http://localhost:8000 and try: searching for a song, pasting a video link, importing a playlist.
 
-> Đừng mở thẳng file `index.html` bằng `file://`. YouTube có thể báo lỗi 153 khi trang không có referrer.
+> Don't open `index.html` directly from disk (`file://`). YouTube may show error 153 when the page has no referrer.
 
-## 6. Đưa site lên mạng (Cloudflare Pages)
+## 6. Put the site online (Cloudflare Pages)
 
 ```bash
 cd occra
 npx wrangler pages deploy site --project-name occra
 ```
 
-Xong là có site tại `https://occra.pages.dev`. Cloudflare cũng cho kéo thả thư mục `site` trong dashboard (Workers & Pages → Create → Pages → Upload assets). Dashboard có thể đẩy bạn sang Workers, nhưng cách CLI ở trên vẫn dùng được. Muốn host chỗ khác thì GitHub Pages cũng được, chỉ cần upload thư mục `site`.
+Your site will be at `https://occra.pages.dev`. You can also drag and drop the `site` folder in the Cloudflare dashboard (Workers & Pages → Create → Pages → Upload assets). The dashboard may steer you toward Workers instead, but the CLI command above still works. To host elsewhere, GitHub Pages also works: just upload the `site` folder.
 
-## 7. Khoá Worker lại cho site của bạn
+## 7. Lock the Worker to your site
 
-Mở `api/wrangler.toml`, đổi:
+Open `api/wrangler.toml` and change:
 
 ```toml
 ALLOWED_ORIGIN = "https://occra.pages.dev"
 ```
 
-(đúng địa chỉ site của bạn, không có dấu `/` cuối), rồi deploy lại:
+Use your site's exact address, with no trailing `/`. Then deploy again:
 
 ```bash
 cd occra/api
 wrangler deploy
 ```
 
-Secret `YT_KEY` đã lưu từ trước nên không phải nhập lại.
+The `YT_KEY` secret is already stored, so you don't need to enter it again.
 
-Lưu ý:
+Notes:
 
-- Worker chỉ nhận **một** origin. Sau bước này test từ localhost sẽ bị chặn. Cần test thì tạm đổi lại thành `"*"`.
-- Bước này chỉ chặn web của người khác dùng Worker của bạn, không chặn được ai gọi trực tiếp bằng công cụ như curl. Để chắc hơn, vào dashboard Cloudflare (mục Security → rate limiting) đặt giới hạn request theo IP, nếu gói miễn phí của bạn cho phép.
+- The Worker accepts only **one** origin. After this step, requests from localhost will be blocked. To test locally again, temporarily set it back to `"*"`.
+- This only stops other websites from using your Worker. It does not stop someone calling it directly with a tool like curl. For more protection, add a rate-limiting rule per IP in the Cloudflare dashboard (Security section), if your plan allows it.
 
-## Quota YouTube
+## 8. (Optional) Sign in with Google to import private playlists
 
-- Hạn mức là 10.000 đơn vị mỗi ngày cho cả project.
-- Mỗi từ khoá tìm kiếm **mới** tốn 100 đơn vị, tức khoảng 100 từ khoá khác nhau mỗi ngày. Từ khoá lặp lại được cache 24 giờ nên không tốn thêm.
-- Nhập playlist rẻ hơn nhiều: khoảng 1 đơn vị cho mỗi 50 bài.
-- Hết quota thì tìm kiếm báo lỗi đến hôm sau. Dán link video và phát nhạc vẫn chạy bình thường.
-- Web đông người thì có thể xin Google nâng quota (miễn phí).
+The **Import from my YouTube account** button lets a user sign in with Google and import their own playlists (including private ones, and Liked videos). It runs entirely in the browser and needs no Worker changes. The sign-in token lives only in the page's memory and is sent straight to Google.
 
-## Cách dùng
+Menu names in Google Cloud Console may differ slightly depending on the version of the interface:
 
-- Ô nhập bên phải tự nhận ba kiểu: dán link hoặc ID video thì thêm thẳng; dán link playlist (có `list=`) thì nhập cả playlist (tối đa 300 bài); gõ chữ thì tìm kiếm.
-- Nhập playlist chỉ hoạt động với playlist công khai hoặc unlisted. Playlist riêng tư, Liked videos, Watch Later và Mix tự động (`list=RD...`) thì không nhập được.
-- Kéo thả hoặc dùng nút ▲▼ để sắp xếp. Tên danh sách phát bấm vào để sửa trực tiếp.
-- Danh sách lưu trong trình duyệt của từng người (localStorage), chưa đồng bộ giữa các thiết bị.
+1. In the same project as step 2, open **Google Auth Platform** (or APIs & Services → OAuth consent screen). Choose user type **External** and fill in the app name and a contact email.
+2. Under **Data Access / Scopes**, add `https://www.googleapis.com/auth/youtube.readonly`.
+3. Leave the publishing status as **Testing**. Under **Audience / Test users**, add your Gmail and your friends' Gmail addresses (up to 100 people). Anyone not on the list can't sign in.
+4. Open **Credentials → Create credentials → OAuth client ID → Web application**. Under **Authorized JavaScript origins**, add `https://occra.pages.dev` (your site's address) and `http://localhost:8000`. After it is created, copy the **Client ID**.
+5. Open `site/config.js` and replace `YOUR-CLIENT-ID.apps.googleusercontent.com` on the `var GOOGLE_CLIENT_ID=` line with the Client ID you copied.
 
-## Khi bị lỗi
+Notes:
 
-| Triệu chứng | Nguyên nhân thường gặp |
+- In Testing mode, sign-in permission expires after 7 days, so each person has to sign in again every week. They will also see a "Google hasn't verified this app" warning (click Continue).
+- Removing the 100-user cap and the 7-day expiry requires submitting the app to Google for verification. That is not worth it for a "for fun" project.
+- Watch Later and watch history can't be read through the API. Liked videos can.
+
+## YouTube quota
+
+- The limit is 10,000 units per day for the whole project.
+- Each **new** search keyword costs 100 units, which is about 100 different keywords per day. Repeated keywords are cached for 24 hours and cost nothing extra.
+- Importing a playlist by link is much cheaper: about 1 unit per 50 tracks.
+- When the quota runs out, search returns an error until the next day. Pasting video links and playing music keep working.
+- If the site gets popular, you can apply to Google for a higher quota (free).
+
+## How to use
+
+- The input box on the right recognises three kinds of input: a video link or ID is added directly; a playlist link (containing `list=`) imports the whole playlist (up to 300 tracks); plain text runs a search.
+- Importing by link works for public and unlisted playlists. Private playlists, Liked videos, Watch Later and auto-generated Mixes (`list=RD...`) can't be imported this way. Use the Google sign-in button (step 8) for private playlists and Liked videos.
+- Drag and drop, or use the ▲▼ buttons, to reorder tracks. Click the playlist name to rename it.
+- Playlists are stored in each person's own browser (localStorage). They are not synced across devices yet.
+
+## Troubleshooting
+
+| Symptom | Common cause |
 |---|---|
-| "Cannot reach the server" | URL Worker sai, hoặc `ALLOWED_ORIGIN` không khớp địa chỉ site. Chạy `wrangler tail` trong thư mục `api` để xem log trực tiếp. |
-| "API error: ... quota" | Hết hạn mức YouTube trong ngày, đợi hôm sau. |
-| "Set API in occra.html to your Worker URL first" | Chưa thay `YOUR-WORKER` ở bước 4. |
-| Video báo lỗi phát (ví dụ 153) | Mở bằng `file://`, hãy chạy qua `http://localhost` hoặc site đã deploy. |
-| Một bài tự bị bỏ qua | Chủ video cấm embed hoặc video đã bị xoá. |
+| "Cannot reach the server" | Wrong Worker URL, or `ALLOWED_ORIGIN` doesn't match the site's address. Run `wrangler tail` inside `api` to see live logs. |
+| "API error: ... quota" | The daily YouTube quota is used up. Wait until the next day. |
+| "Set API in config.js to your Worker URL first" | You haven't replaced `YOUR-WORKER` yet (step 4). |
+| "Set GOOGLE_CLIENT_ID in config.js first" | You haven't completed step 8 yet. |
+| A video fails to play (for example error 153) | The page was opened from `file://`. Use `http://localhost` or the deployed site instead. |
+| A track is skipped automatically | The owner disabled embedding, or the video was deleted. |
+| "The playlist ... cannot be found" on a link import | The playlist is private or deleted. Make it Unlisted or Public, or use the Google sign-in button. |
 
-## Giới hạn cần biết
+## Known limitations
 
-- Quảng cáo trong video embed của YouTube vẫn có thể xuất hiện. Phần giao diện của Occra thì không có quảng cáo.
-- Video phải luôn hiển thị (ảnh bìa vuông chính là video được cắt), vì điều khoản embed của YouTube không cho ẩn hay tách riêng phần âm thanh.
+- Ads inside YouTube's embedded player can still appear. Occra's own interface has no ads.
+- The video must stay visible (the square cover art is the video, cropped), because YouTube's embed terms don't allow hiding it or separating the audio.
