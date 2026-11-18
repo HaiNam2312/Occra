@@ -43,7 +43,7 @@
 <script>
 (function(){
 var $=function(i){return document.getElementById(i)};
-var API='https://YOUR-WORKER.workers.dev'; // <- paste your deployed Worker URL here
+var API='https://occra-api.occar.workers.dev';
 var S={lists:[{id:'l1',name:'Playlist 1',q:[],cur:-1}],active:'l1'};
 try{var s=JSON.parse(localStorage.getItem('occra_v1')||'null');if(s&&s.lists&&s.lists.length)S=s}catch(e){}
 S.lists.forEach(function(l){l.name=l.name.replace(/^Danh sách /,'Playlist ');l.q.forEach(function(it){if(it.title&&it.title.indexOf('Đang tải')===0)it.title='Loading title…'})});
