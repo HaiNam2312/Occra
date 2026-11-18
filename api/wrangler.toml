@@ -5,4 +5,4 @@ compatibility_date = "2024-11-01"
 [vars]
 # After you host the site, set this to its exact origin, e.g. "https://occra.pages.dev"
 # so only your site can use your API key. "*" = anyone (fine for local testing).
-ALLOWED_ORIGIN = "*"
+ALLOWED_ORIGIN = "https://occra.pages.dev"
