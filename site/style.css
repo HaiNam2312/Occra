@@ -68,3 +68,14 @@ li:hover .acts,li.cur .acts{opacity:1}
 .grip{cursor:grab;color:var(--mu2);flex:none}
 .hint{padding:34px 20px;text-align:center;color:var(--mu2);font-size:14px}
 ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:var(--ln);border-radius:4px}
+
+.mine{padding:2px 16px 10px}
+.mine button{width:100%;display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;background:var(--p2);border:1px solid var(--ln);text-align:left;transition:border-color .15s,background .15s}
+.mine button:hover{border-color:var(--o);background:#202024}
+.mi{width:34px;height:34px;border-radius:9px;background:var(--bg);display:grid;place-items:center;color:var(--mu);flex:none;transition:color .15s}
+.mine button:hover .mi{color:var(--o)}
+.mt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.mt b{font-size:13px;font-weight:700;color:var(--w)}
+.mt small{font-size:11px;color:var(--mu)}
+.ma{color:var(--mu2);font-size:18px;line-height:1}
+.mine button:hover .ma{color:var(--w)}
