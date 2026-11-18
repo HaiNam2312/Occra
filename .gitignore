@@ -1,0 +1,26 @@
+# Secrets and local env (the YouTube key lives in Cloudflare via `wrangler secret put`, never in files)
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+
+# Wrangler / Cloudflare local state and build output
+.wrangler/
+node_modules/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/
+.idea/
+*.swp
+
+# Python (local test server cache)
+__pycache__/
