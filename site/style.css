@@ -139,8 +139,7 @@ body.vmode .ctl{margin-top:30px}
 .hill svg text.d{fill:#0b0b0c;font-weight:700}
 .hill svg text.t{fill:var(--w)}
 .hill svg text.s{font-size:9.5px;fill:var(--mu2)}
-.hstep{margin-top:16px;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--mu2)}
-.hbox h3{margin:6px 0 0;font-family:Unbounded,sans-serif;font-weight:500;font-size:18px;line-height:1.3}
+.hbox h3{margin:18px 0 0;font-family:Unbounded,sans-serif;font-weight:500;font-size:18px;line-height:1.3}
 .hbox p{margin:8px 0 0;color:var(--mu);font-size:14px;line-height:1.55}
 .hnote{margin-top:10px;font-size:13px;color:var(--mu2)}
 .hnote:empty{display:none}

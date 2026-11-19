@@ -249,7 +249,7 @@ var HELP=[
 ],hi=0;
 function renderHelp(){
   var p=HELP[hi],last=hi===HELP.length-1;
-  $('hIll').innerHTML=p.i;$('hStep').textContent='Tip '+(hi+1)+' of '+HELP.length;$('hTitle').textContent=p.t;$('hText').textContent=p.x;
+  $('hIll').innerHTML=p.i;$('hTitle').textContent=p.t;$('hText').textContent=p.x;
   var n=$('hNote');n.innerHTML='';
   if(p.note){
     n.appendChild(document.createTextNode("Can't sign in? Contact the developer"));
