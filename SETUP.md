@@ -18,7 +18,7 @@ occra/
 ├── site/
 │   ├── index.html
 │   ├── style.css
-│   ├── config.js    ← the only file you edit (Worker URL, Google Client ID)
+│   ├── config.js    ← the only file you edit (Worker URL, Google Client ID, contact email)
 │   └── app.js       ← all of the app logic
 └── api/
     ├── worker.js
@@ -60,6 +60,14 @@ var API='https://YOUR-WORKER.workers.dev';
 ```
 
 Replace the URL with your Worker's URL.
+
+Still in `site/config.js`, set the contact shown in the in-app Help guide (the "Can't sign in? Contact the developer" note) so friends know who to ask:
+
+```js
+var CONTACT='you@example.com';
+```
+
+If you leave the placeholder, the note simply says "Contact the developer" without an address.
 
 ## 5. Test locally
 
@@ -105,7 +113,7 @@ Notes:
 
 ## 8. (Optional) Sign in with Google to import private playlists
 
-The **Import from my YouTube account** button lets a user sign in with Google and import their own playlists (including private ones, and Liked videos). It runs entirely in the browser and needs no Worker changes. The sign-in token lives only in the page's memory and is sent straight to Google.
+The **Import from YouTube** button lets a user sign in with Google and import their own playlists (including private ones, and Liked videos). It runs entirely in the browser and needs no Worker changes. The sign-in token lives only in the page's memory and is sent straight to Google.
 
 Menu names in Google Cloud Console may differ slightly depending on the version of the interface:
 
@@ -133,6 +141,7 @@ Notes:
 
 - The input box on the right recognises three kinds of input: a video link or ID is added directly; a playlist link (containing `list=`) imports the whole playlist (up to 300 tracks); plain text runs a search.
 - Importing by link works for public and unlisted playlists. Private playlists, Liked videos, Watch Later and auto-generated Mixes (`list=RD...`) can't be imported this way. Use the Google sign-in button (step 8) for private playlists and Liked videos.
+- The **Help** button (top right, or press `?`) opens a short illustrated guide. It opens by itself the first time someone visits.
 - Drag and drop, or use the ▲▼ buttons, to reorder tracks. Click the playlist name to rename it.
 - Playlists are stored in each person's own browser (localStorage). They are not synced across devices yet.
 

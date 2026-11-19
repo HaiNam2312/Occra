@@ -14,7 +14,10 @@ function api(path,params){
   if(API.indexOf('YOUR-WORKER')>-1){msg('Set API in config.js to your Worker URL first');return Promise.reject()}
   var qs=Object.keys(params).filter(function(k){return params[k]}).map(function(k){return k+'='+encodeURIComponent(params[k])}).join('&');
   return fetch(API+'/'+path+'?'+qs).then(function(r){return r.json()}).then(function(d){
-    if(d.error){msg('API error: '+(d.error.message||'').slice(0,80));throw 0}return d}).catch(function(e){if(e)msg('Cannot reach the server');throw 0});
+    if(d.error){var em=(d.error.message||'').replace(/<[^>]+>/g,'');
+      if(/playlist/i.test(em)&&/not be found|cannot be found/i.test(em))msg('This playlist is private or does not exist. For private playlists, use Import from YouTube.');
+      else msg('API error: '+em.slice(0,80));
+      throw 0}return d}).catch(function(e){if(e)msg('Cannot reach the server');throw 0});
 }
 
 /* ---- Google sign-in: the user's own YouTube playlists (token stays in memory, goes only to Google) ---- */
@@ -99,7 +102,16 @@ function render(){
   var src=results||l.q;
   $('hd').textContent=results?(results.hdr||'Search results'):'Queue · '+l.q.length+(l.q.length===1?' track':' tracks');
   $('back').style.display=results?'inline':'none';
-  if(!src.length){var h=document.createElement('div');h.className='hint';h.textContent=results?'No results':'This playlist is empty';ul.appendChild(h)}
+  if(!src.length){
+    var h=document.createElement('div');h.className='hint';
+    if(results)h.textContent='No results';
+    else{
+      var hp=document.createElement('div');hp.className='hh';hp.textContent='This playlist is empty';h.appendChild(hp);
+      [['Search or paste a link',function(){$('url').focus()}],['Import from YouTube',function(){$('mine').click()}],['How to use Occra',openHelp]].forEach(function(a){
+        var b=document.createElement('button');b.className='hb';b.textContent=a[0];b.onclick=a[1];h.appendChild(b)});
+    }
+    ul.appendChild(h);
+  }
   src.forEach(function(it,i){
     var li=document.createElement('li'),isCur=!results&&i===l.cur;if(isCur)li.className='cur';
     var im=document.createElement('img');var tsrc=it.pl?it.thumb:'https://i.ytimg.com/vi/'+it.id+'/default.jpg';if(tsrc)im.src=tsrc;im.alt='';
@@ -214,6 +226,44 @@ function pick(id){
   if(ready){if(l.cur>=0&&l.q[l.cur])player.cueVideoById(l.q[l.cur].id);else player.stopVideo()}
 }
 
+/* ---- help guide ---- */
+var HELP=[
+{t:'Add a song',x:'Type a song name in the box on the right, or paste a YouTube link, then press Add. Search results appear in the list below, so click one to add it to your playlist.',i:`<svg viewBox="0 0 400 190"><rect class="a" x="30" y="22" width="270" height="34" rx="10"/><text x="44" y="43">lofi hip hop, or paste a link…</text><rect class="o" x="310" y="22" width="60" height="34" rx="10"/><text class="d" x="340" y="43" text-anchor="middle">Add</text>
+<rect class="a" x="30" y="76" width="340" height="44" rx="10"/><rect class="o" x="30" y="86" width="3" height="24" rx="1.5"/><rect class="l" x="46" y="84" width="40" height="28" rx="5"/><text class="t" x="98" y="97" style="font-size:12px;font-weight:700">Song title</text><text class="s" x="98" y="110">Artist</text><text class="s" x="350" y="102" text-anchor="end">▶</text>
+<rect class="a" x="30" y="128" width="340" height="44" rx="10" style="opacity:.6"/><rect class="l" x="46" y="136" width="40" height="28" rx="5"/><text x="98" y="149" style="font-size:12px">Another song</text><text class="s" x="98" y="162">Artist</text></svg>`},
+{t:'Import a public playlist',x:'Paste a YouTube playlist link (the one containing list=) into the same box. Occra imports up to 300 tracks into your current playlist. This works for public and unlisted playlists.',i:`<svg viewBox="0 0 400 190"><rect class="a" x="30" y="22" width="270" height="34" rx="10"/><text x="44" y="43" style="font-size:10.5px">youtube.com/playlist?list=PLxxxxxxxx</text><rect class="o" x="310" y="22" width="60" height="34" rx="10"/><text class="d" x="340" y="43" text-anchor="middle">Add</text>
+<path class="so" d="M200 62v14m-5-5l5 5 5-5"/>
+<rect class="a" x="30" y="86" width="340" height="14" rx="6"/><rect class="a" x="30" y="106" width="340" height="14" rx="6" style="opacity:.8"/><rect class="a" x="30" y="126" width="340" height="14" rx="6" style="opacity:.6"/><rect class="a" x="30" y="146" width="340" height="14" rx="6" style="opacity:.4"/>
+<text class="s" x="370" y="176" text-anchor="end">public &amp; unlisted · up to 300 tracks</text></svg>`},
+{t:'Import private playlists & Liked videos',x:'Click Import from YouTube at the top right and sign in with Google. Your playlists show up in the list, so click one to bring it into a new Occra playlist.',i:`<svg viewBox="0 0 400 190"><text x="30" y="40" style="font-size:11px">Sign in with Google</text><text class="s" x="30" y="55">then pick a playlist →</text><rect class="o" x="210" y="22" width="160" height="34" rx="10"/><text class="d" x="290" y="43" text-anchor="middle">Import from YouTube</text>
+<rect class="a" x="30" y="74" width="340" height="30" rx="9"/><text class="t" x="44" y="93" style="font-size:12px;font-weight:700">Liked videos</text><rect class="l" x="334" y="80" width="24" height="18" rx="6"/><text x="346" y="93" text-anchor="middle" style="fill:var(--w)">↓</text>
+<rect class="a" x="30" y="110" width="340" height="30" rx="9"/><text x="44" y="129" style="font-size:12px">Road trip · 42 videos</text><rect class="so" x="334" y="116" width="24" height="18" rx="6"/><text x="346" y="129" text-anchor="middle" style="fill:var(--o)">↓</text>
+<rect class="a" x="30" y="146" width="340" height="30" rx="9" style="opacity:.7"/><text x="44" y="165" style="font-size:12px">Study mix · 120 videos</text><rect class="l" x="334" y="152" width="24" height="18" rx="6"/><text x="346" y="165" text-anchor="middle" style="fill:var(--w)">↓</text></svg>`,note:true},
+{t:'Organize your playlists',x:'Drag tracks to reorder them, or use the ▲ ▼ buttons. Click the playlist name to rename it, and use the menu to switch between playlists or create new ones.',i:`<svg viewBox="0 0 400 190"><rect class="a" x="30" y="16" width="200" height="30" rx="9"/><text x="44" y="35" style="fill:var(--w);font-size:12px">Playlist 1</text><text x="214" y="35" style="font-size:12px">▾</text><rect class="a" x="240" y="16" width="30" height="30" rx="9"/><text x="255" y="36" text-anchor="middle" style="font-size:14px">+</text>
+<rect class="a" x="30" y="62" width="340" height="32" rx="9"/><path class="dots" d="M42 70v16m6-16v16"/><text x="64" y="82" style="font-size:12px">Track one</text>
+<rect class="a" x="38" y="98" width="340" height="32" rx="9" style="fill:var(--bg)"/><rect x="38" y="98" width="340" height="32" rx="9" class="sd"/><path class="dots" d="M50 106v16m6-16v16"/><text class="t" x="72" y="118" style="font-size:12px">Track two (dragging)</text>
+<rect class="a" x="30" y="134" width="340" height="32" rx="9"/><path class="dots" d="M42 142v16m6-16v16"/><text x="64" y="154" style="font-size:12px">Track three</text><text x="310" y="154" style="font-size:11px">▲</text><text x="328" y="154" style="font-size:11px">▼</text><text x="346" y="154" style="font-size:11px">✕</text></svg>`},
+{t:'Video mode & shortcuts',x:'Video mode hides the playlist and gives the video the whole screen. Press V to toggle it, Space to play or pause, Esc to leave video mode, and ? to open this guide.',i:`<svg viewBox="0 0 400 190"><rect class="a" x="22" y="24" width="248" height="140" rx="9"/><path class="m" d="M132 78l32 16-32 16z"/><rect class="l" x="22" y="172" width="248" height="3" rx="1.5"/><rect class="o" x="22" y="172" width="90" height="3" rx="1.5"/>
+<path class="l" d="M284 24v152" stroke="var(--ln)" stroke-width="1"/><circle class="o" cx="338" cy="70" r="17"/><path d="M333 62l12 8-12 8z" style="fill:#0b0b0c"/><circle class="a" cx="300" cy="70" r="9"/><circle class="a" cx="376" cy="70" r="9"/><rect class="l" x="298" y="102" width="82" height="3" rx="1.5"/><rect class="w" x="298" y="102" width="56" height="3" rx="1.5"/>
+<rect class="a" x="298" y="126" width="22" height="22" rx="6"/><text class="t" x="309" y="141" text-anchor="middle" style="font-weight:700">V</text><rect class="a" x="326" y="126" width="38" height="22" rx="6"/><text class="t" x="345" y="141" text-anchor="middle" style="font-size:10px">Space</text><rect class="a" x="298" y="154" width="30" height="22" rx="6"/><text class="t" x="313" y="169" text-anchor="middle" style="font-size:10px">Esc</text></svg>`}
+],hi=0;
+function renderHelp(){
+  var p=HELP[hi],last=hi===HELP.length-1;
+  $('hIll').innerHTML=p.i;$('hStep').textContent='Tip '+(hi+1)+' of '+HELP.length;$('hTitle').textContent=p.t;$('hText').textContent=p.x;
+  var n=$('hNote');n.innerHTML='';
+  if(p.note){
+    n.appendChild(document.createTextNode("Can't sign in? Contact the developer"));
+    var ct=(typeof CONTACT!=='undefined'&&CONTACT&&CONTACT.indexOf('YOUR-EMAIL')<0)?CONTACT:'';
+    if(ct){n.appendChild(document.createTextNode(': '));var a=document.createElement('a');a.href=ct.indexOf('@')>-1&&ct.indexOf('://')<0?'mailto:'+ct:ct;a.textContent=ct;a.target='_blank';a.rel='noopener';n.appendChild(a)}
+    else n.appendChild(document.createTextNode('.'));
+  }
+  var d=$('hDots');d.innerHTML='';HELP.forEach(function(x,i){var e=document.createElement('i');if(i===hi)e.className='on';d.appendChild(e)});
+  $('hPrev').disabled=hi===0;$('hNext').disabled=last;$('hDone').hidden=!last;
+}
+function openHelp(){hi=0;renderHelp();$('help').hidden=false;$('hNext').focus()}
+function closeHelp(){$('help').hidden=true;try{localStorage.setItem('occra_help','1')}catch(e){}}
+function helpGo(d){var n=hi+d;if(n<0||n>=HELP.length)return;hi=n;renderHelp()}
+
 /* ---- UI ---- */
 var vmode=false;
 try{vmode=localStorage.getItem('occra_vmode')==='1'}catch(e){}
@@ -225,6 +275,9 @@ function setMode(v){
 
 $('go').onclick=submit;
 $('vm').onclick=function(){setMode(!vmode)};
+$('hb').onclick=openHelp;$('hClose').onclick=closeHelp;$('hDone').onclick=closeHelp;
+$('hPrev').onclick=function(){helpGo(-1)};$('hNext').onclick=function(){helpGo(1)};
+$('help').onclick=function(e){if(e.target===$('help'))closeHelp()};
 $('mine').onclick=function(){signIn(showMine)};
 $('url').onkeydown=function(e){if(e.key==='Enter')submit()};
 $('back').onclick=function(){results=null;render()};
@@ -267,9 +320,13 @@ $('dl').onclick=function(){
     var l=L();if(ready){if(l.cur>=0&&l.q[l.cur])player.cueVideoById(l.q[l.cur].id);else player.stopVideo()}
   });
 };
-document.addEventListener('keydown',function(e){if(!$('modal').hidden||e.target.tagName==='INPUT'||e.target.closest('#dd'))return;if(e.code==='Space'){e.preventDefault();$('pp').click()}
+document.addEventListener('keydown',function(e){
+  if(!$('help').hidden){if(e.key==='ArrowRight'){e.preventDefault();helpGo(1)}else if(e.key==='ArrowLeft'){e.preventDefault();helpGo(-1)}else if(e.key==='Escape'){e.preventDefault();closeHelp()}return}
+  if(!$('modal').hidden||e.target.tagName==='INPUT'||e.target.closest('#dd'))return;if(e.code==='Space'){e.preventDefault();$('pp').click()}
   else if(e.key==='v'||e.key==='V'){setMode(!vmode)}
-  else if(e.key==='Escape'&&vmode){setMode(false)}});
+  else if(e.key==='Escape'&&vmode){setMode(false)}
+  else if(e.key==='?'){openHelp()}});
 setMode(vmode);
 render();
+try{if(!localStorage.getItem('occra_help'))setTimeout(openHelp,700)}catch(e){}
 })();
