@@ -15,26 +15,28 @@
 </head>
 <body>
 <div class="main">
-  <div class="top"><div class="brand">Occra<i></i></div></div>
+  <div class="top"><div class="brand">Occra<i></i></div><button class="tg" id="vm" title="Toggle video mode (V)"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg><span>Video mode</span></button></div>
   <div class="center">
     <div class="stage"><div id="yt"></div><div class="empty" id="empty">Search for a song or paste a YouTube link in the list on the right</div></div>
-    <div class="title" id="title">—</div>
-    <div class="sub" id="sub">Nothing playing</div>
     <div class="bar"><span id="cur">0:00</span><input type="range" id="seek" min="0" max="1000" value="0"><span id="dur">0:00</span></div>
-    <div class="ctl">
-      <button id="shuf" class="sm" title="Shuffle">⇄</button>
-      <button id="prev" title="Previous">⏮</button>
-      <button id="pp" class="play" title="Play / Pause">▶</button>
-      <button id="next" title="Next">⏭</button>
-      <button id="rep" class="sm" title="Repeat">⟳</button>
+    <div class="side">
+      <div class="title" id="title">—</div>
+      <div class="sub" id="sub">Nothing playing</div>
+      <div class="ctl">
+        <button id="shuf" class="sm" title="Shuffle">⇄</button>
+        <button id="prev" title="Previous">⏮</button>
+        <button id="pp" class="play" title="Play / Pause">▶</button>
+        <button id="next" title="Next">⏭</button>
+        <button id="rep" class="sm" title="Repeat">⟳</button>
+      </div>
+      <div class="vrow"><span>♪</span><input type="range" class="vol" id="vol" min="0" max="100" value="80" title="Volume"></div>
     </div>
-    <div class="vrow"><span>♪</span><input type="range" class="vol" id="vol" min="0" max="100" value="80" title="Volume"></div>
   </div>
 </div>
 <aside>
   <div class="ph"><input id="plname" class="plname" spellcheck="false" title="Click to rename playlist"><button id="mine" class="imp">Import from YouTube</button></div>
   <div class="pl">
-    <select id="sel"></select>
+    <div class="dd" id="dd"><button class="ddb" id="ddb" aria-haspopup="listbox" aria-expanded="false"><span class="ddt" id="ddt"></span><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button><div class="ddm" id="ddm" role="listbox" hidden></div></div>
     <button class="ib" id="nl" title="New playlist">+</button>
     <button class="ib" id="rn" title="Rename">✎</button>
     <button class="ib" id="dl" title="Delete playlist">✕</button>
@@ -44,6 +46,7 @@
   <div class="hd" id="hd"></div>
   <ul id="list"></ul>
 </aside>
+<div class="modal" id="modal" hidden><div class="mbox" role="dialog" aria-modal="true" aria-labelledby="mTitle"><h3 id="mTitle"></h3><p id="mText"></p><input type="text" id="mInput" spellcheck="false" maxlength="60"><div class="mbtn"><button class="mc" id="mCancel">Cancel</button><button class="mo" id="mOk">OK</button></div></div></div>
 <script src="config.js"></script>
 <script src="app.js"></script>
 </body>
