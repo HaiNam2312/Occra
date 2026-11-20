@@ -267,14 +267,25 @@ function helpGo(d){var n=hi+d;if(n<0||n>=HELP.length)return;hi=n;renderHelp()}
 /* ---- UI ---- */
 var vmode=false;
 try{vmode=localStorage.getItem('occra_vmode')==='1'}catch(e){}
-function setMode(v){
-  vmode=v;document.body.classList.toggle('vmode',v);
-  $('vm').querySelector('span').textContent=v?'Show playlist':'Video mode';
-  try{localStorage.setItem('occra_vmode',v?'1':'0')}catch(e){}
+var vtBusy=null;
+function setMode(v,anim){
+  function apply(){
+    vmode=v;document.body.classList.toggle('vmode',v);
+    $('vm').querySelector('span').textContent=v?'Show playlist':'Video mode';
+    try{localStorage.setItem('occra_vmode',v?'1':'0')}catch(e){}
+  }
+  var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(!anim||reduce||!document.startViewTransition){apply();return}
+  if(vtBusy){try{vtBusy.skipTransition()}catch(e){}}
+  var root=document.documentElement,t;
+  root.classList.add('vt');
+  t=vtBusy=document.startViewTransition(apply);
+  function done(){if(vtBusy===t){vtBusy=null;root.classList.remove('vt')}}
+  t.finished.then(done,done);
 }
 
 $('go').onclick=submit;
-$('vm').onclick=function(){setMode(!vmode)};
+$('vm').onclick=function(){setMode(!vmode,true)};
 $('hb').onclick=openHelp;$('hClose').onclick=closeHelp;$('hDone').onclick=closeHelp;
 $('hPrev').onclick=function(){helpGo(-1)};$('hNext').onclick=function(){helpGo(1)};
 $('help').onclick=function(e){if(e.target===$('help'))closeHelp()};
@@ -323,8 +334,8 @@ $('dl').onclick=function(){
 document.addEventListener('keydown',function(e){
   if(!$('help').hidden){if(e.key==='ArrowRight'){e.preventDefault();helpGo(1)}else if(e.key==='ArrowLeft'){e.preventDefault();helpGo(-1)}else if(e.key==='Escape'){e.preventDefault();closeHelp()}return}
   if(!$('modal').hidden||e.target.tagName==='INPUT'||e.target.closest('#dd'))return;if(e.code==='Space'){e.preventDefault();$('pp').click()}
-  else if(e.key==='v'||e.key==='V'){setMode(!vmode)}
-  else if(e.key==='Escape'&&vmode){setMode(false)}
+  else if(e.key==='v'||e.key==='V'){setMode(!vmode,true)}
+  else if(e.key==='Escape'&&vmode){setMode(false,true)}
   else if(e.key==='?'){openHelp()}});
 setMode(vmode);
 render();

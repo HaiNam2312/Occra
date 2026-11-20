@@ -162,3 +162,15 @@ li.cur .t{color:var(--o)}
 .by{color:var(--mu)}
 .add button:hover,.imp:hover,.mo:hover,.hdone:hover{background:var(--o-hi)}
 .add button:active,.imp:active,.mo:active,.hdone:active,.ctl .play:active{background:var(--o-lo)}
+
+/* view transition: playlist <-> video mode */
+.vt .stage{view-transition-name:stage}
+.vt aside{view-transition-name:pl}
+.vt .tops{view-transition-name:tops}
+::view-transition-group(root){animation-duration:.28s}
+::view-transition-group(tops),::view-transition-group(stage){animation-duration:.34s;animation-timing-function:cubic-bezier(.22,.8,.3,1)}
+::view-transition-old(pl){animation:pl-out .22s ease-in both}
+::view-transition-new(pl){animation:pl-in .3s cubic-bezier(.22,.8,.3,1) both}
+@keyframes pl-out{to{transform:translateX(48px);opacity:0}}
+@keyframes pl-in{from{transform:translateX(48px);opacity:0}}
+@media (prefers-reduced-motion:reduce){::view-transition-group(*),::view-transition-old(*),::view-transition-new(*){animation:none!important}}
