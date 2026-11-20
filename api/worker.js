@@ -9,7 +9,7 @@ export default {
       return json({ error: { message: 'Origin not allowed' } }, 403, cors);
 
     const url = new URL(req.url), p = url.searchParams;
-    let api, ttl, shape, cacheKey;
+    let api, target, ttl, shape, cacheKey;
     if (url.pathname === '/search') {
       const q = (p.get('q') || '').trim().toLowerCase().slice(0, 100);
       if (!q) return json({ error: { message: 'Missing q' } }, 400, cors);
@@ -26,15 +26,27 @@ export default {
         items: (d.items || []).filter(x => x.snippet.resourceId && !/^(Private|Deleted) video$/.test(x.snippet.title))
           .map(x => ({ id: x.snippet.resourceId.videoId, title: x.snippet.title, by: (x.snippet.videoOwnerChannelTitle || '').replace(' - Topic', '') }))
       });
+    } else if (url.pathname === '/suggest') {
+      // Unofficial Google/YouTube autocomplete endpoint (no key, no quota). If it ever breaks, Occra just loses the suggestions.
+      const q = (p.get('q') || '').trim().toLowerCase().slice(0, 60);
+      if (q.length < 2) return json({ items: [] }, 200, cors);
+      target = 'https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&hl=en&q=' + encodeURIComponent(q);
+      ttl = 3600; cacheKey = 'sg:' + q;
+      shape = d => ({ items: (Array.isArray(d) && Array.isArray(d[1]) ? d[1] : []).filter(x => typeof x === 'string').slice(0, 8) });
     } else return json({ error: { message: 'Not found' } }, 404, cors);
 
     const cache = caches.default, ck = new Request('https://occra.cache/' + encodeURIComponent(cacheKey));
     const hit = await cache.match(ck);
     if (hit) return new Response(hit.body, { headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'HIT' } });
 
-    const r = await fetch('https://www.googleapis.com/youtube/v3/' + api + '&key=' + env.YT_KEY);
-    const d = await r.json();
-    if (d.error) return json({ error: { message: d.error.message } }, 502, cors);
+    let d;
+    try {
+      const r = await fetch(target || ('https://www.googleapis.com/youtube/v3/' + api + '&key=' + env.YT_KEY));
+      d = JSON.parse(await r.text());
+    } catch (e) {
+      return json({ error: { message: 'Upstream error' } }, 502, cors);
+    }
+    if (d && d.error) return json({ error: { message: d.error.message } }, 502, cors);
     const res = new Response(JSON.stringify(shape(d)), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=' + ttl } });
     ctx.waitUntil(cache.put(ck, res.clone()));
     return new Response(res.body, { headers: { ...cors, 'Content-Type': 'application/json', 'X-Cache': 'MISS' } });

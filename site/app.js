@@ -85,12 +85,13 @@ function search(qs){
   api('search',{q:qs}).then(function(d){results=d.items;msg('');render()}).catch(function(){});
 }
 function submit(){
+  hideSug();
   var v=$('url').value.trim();if(!v)return;
   var lm=v.match(/[?&]list=([\w-]+)/);
   if(lm&&!/^RD/.test(lm[1])){importPlaylist(lm[1]);$('url').value='';return}
   var toks=v.split(/[\s,]+/).filter(Boolean),ids=toks.map(parseId);
   if(ids.every(Boolean)){results=null;addIds(ids);$('url').value='';return}
-  results=null;search(v);
+  results=null;addRecent(v);search(v);
 }
 
 /* ---- render ---- */
@@ -264,6 +265,64 @@ function openHelp(){hi=0;renderHelp();$('help').hidden=false;$('hNext').focus()}
 function closeHelp(){$('help').hidden=true;try{localStorage.setItem('occra_help','1')}catch(e){}}
 function helpGo(d){var n=hi+d;if(n<0||n>=HELP.length)return;hi=n;renderHelp()}
 
+/* ---- search suggestions: local recents + Google autocomplete via the Worker ---- */
+var sug={items:[],act:-1,tok:0,cache:{},timer:null,head:false};
+var IC_S='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>';
+var IC_R='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>';
+function getRecent(){try{var r=JSON.parse(localStorage.getItem('occra_recent')||'[]');return Array.isArray(r)?r:[]}catch(e){return[]}}
+function setRecent(r){try{localStorage.setItem('occra_recent',JSON.stringify(r.slice(0,10)))}catch(e){}}
+function addRecent(q){q=q.trim();if(!q)return;var r=getRecent().filter(function(x){return x.toLowerCase()!==q.toLowerCase()});r.unshift(q);setRecent(r)}
+function delRecent(q){setRecent(getRecent().filter(function(x){return x!==q}))}
+function looksLikeLink(v){return /^https?:\/\//i.test(v)||/(youtu\.be|youtube\.com)/i.test(v)||!!parseId(v)}
+function buildSug(v,remote){
+  var items=[],low=v.toLowerCase(),seen={};
+  if(v){items.push({k:'q',t:v});seen[low]=1}
+  getRecent().filter(function(x){return !v||x.toLowerCase().indexOf(low)>-1}).slice(0,v?4:6).forEach(function(x){var k=x.toLowerCase();if(!seen[k]){seen[k]=1;items.push({k:'r',t:x})}});
+  (remote||[]).slice(0,6).forEach(function(x){var k=x.toLowerCase();if(!seen[k]){seen[k]=1;items.push({k:'s',t:x})}});
+  return items;
+}
+function hideSug(){$('sug').hidden=true;sug.act=-1}
+function markSug(){[].forEach.call($('sug').querySelectorAll('.sg'),function(e,i){e.classList.toggle('on',i===sug.act)})}
+function renderSug(){
+  var box=$('sug'),v=$('url').value.trim();box.innerHTML='';
+  if(!sug.items.length){box.hidden=true;return}
+  if(sug.head){var hd=document.createElement('div');hd.className='sgh';hd.textContent='Recent searches';box.appendChild(hd)}
+  sug.items.forEach(function(it,i){
+    var row=document.createElement('div');row.className='sg '+it.k+(i===sug.act?' on':'');row.setAttribute('role','option');
+    var ic=document.createElement('span');ic.className='sgi';ic.innerHTML=it.k==='r'?IC_R:IC_S;
+    var tx=document.createElement('span');tx.className='sgt';
+    if(it.k==='q'){tx.appendChild(document.createTextNode('Search for '));var b=document.createElement('b');b.textContent='\u201c'+it.t+'\u201d';tx.appendChild(b)}
+    else if(v&&it.t.toLowerCase().indexOf(v.toLowerCase())===0){tx.appendChild(document.createTextNode(it.t.slice(0,v.length)));var b2=document.createElement('b');b2.textContent=it.t.slice(v.length);tx.appendChild(b2)}
+    else tx.textContent=it.t;
+    row.append(ic,tx);
+    if(it.k==='r'){var x=document.createElement('button');x.className='sgx';x.title='Remove';x.textContent='\u2715';
+      x.onmousedown=function(e){e.preventDefault();e.stopPropagation();delRecent(it.t);onType()};row.appendChild(x)}
+    row.onmousedown=function(e){e.preventDefault();pickSug(i)};
+    row.onmouseenter=function(){sug.act=i;markSug()};
+    box.appendChild(row);
+  });
+  box.hidden=false;
+}
+function pickSug(i){
+  var it=sug.items[i];if(!it)return;
+  $('url').value=it.t;hideSug();results=null;addRecent(it.t);search(it.t);
+}
+function fetchSug(v,key,tok){
+  if(API.indexOf('YOUR-WORKER')>-1)return;
+  fetch(API+'/suggest?q='+encodeURIComponent(v)).then(function(r){return r.json()}).then(function(d){
+    if(!d||!d.items)return;sug.cache[key]=d.items;
+    if(tok!==sug.tok||document.activeElement!==$('url')||$('url').value.trim().toLowerCase()!==key)return;
+    var keep=sug.act;sug.items=buildSug(v,d.items);sug.act=keep<sug.items.length?keep:-1;renderSug();
+  }).catch(function(){});
+}
+function onType(){
+  var v=$('url').value.trim(),key=v.toLowerCase();clearTimeout(sug.timer);sug.act=-1;
+  if(v&&looksLikeLink(v)){hideSug();return}
+  sug.head=!v;sug.items=buildSug(v,v.length>=2?sug.cache[key]:null);renderSug();
+  if(v.length<2||sug.cache[key])return;
+  var tok=++sug.tok;sug.timer=setTimeout(function(){fetchSug(v,key,tok)},220);
+}
+
 /* ---- UI ---- */
 var vmode=false;
 try{vmode=localStorage.getItem('occra_vmode')==='1'}catch(e){}
@@ -290,7 +349,18 @@ $('hb').onclick=openHelp;$('hClose').onclick=closeHelp;$('hDone').onclick=closeH
 $('hPrev').onclick=function(){helpGo(-1)};$('hNext').onclick=function(){helpGo(1)};
 $('help').onclick=function(e){if(e.target===$('help'))closeHelp()};
 $('mine').onclick=function(){signIn(showMine)};
-$('url').onkeydown=function(e){if(e.key==='Enter')submit()};
+$('url').oninput=onType;
+$('url').onfocus=onType;
+$('url').onblur=function(){hideSug()};
+$('url').onkeydown=function(e){
+  var open=!$('sug').hidden,n=sug.items.length;
+  if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+    if(!n)return;e.preventDefault();if(!open)renderSug();
+    sug.act=e.key==='ArrowDown'?(sug.act+1)%n:(sug.act<=0?n-1:sug.act-1);markSug();
+  }else if(e.key==='Enter'){
+    if(open&&sug.act>-1){e.preventDefault();pickSug(sug.act)}else submit();
+  }else if(e.key==='Escape'){hideSug()}
+};
 $('back').onclick=function(){results=null;render()};
 $('pp').onclick=function(){if(!ready)return;var l=L();if(l.cur<0&&l.q.length){play(0);return}player.getPlayerState()===1?player.pauseVideo():player.playVideo()};
 $('next').onclick=next;$('prev').onclick=prev;

@@ -41,7 +41,7 @@
     <button class="ib" id="rn" title="Rename">✎</button>
     <button class="ib" id="dl" title="Delete playlist">✕</button>
   </div>
-  <div class="add"><input type="text" id="url" placeholder="Search, or paste a video / playlist link"><button id="go">Add</button></div>
+  <div class="add"><input type="text" id="url" placeholder="Search, or paste a video / playlist link" autocomplete="off" aria-autocomplete="list" aria-controls="sug"><button id="go">Add</button><div class="sug" id="sug" role="listbox" hidden></div></div>
   <div class="msg"><span id="msg"></span><a id="back" style="display:none">← Back</a></div>
   <div class="hd" id="hd"></div>
   <ul id="list"></ul>
